@@ -18,5 +18,3 @@ for file in $files
 do
     "$script" "$file" $@
 done
-
-
