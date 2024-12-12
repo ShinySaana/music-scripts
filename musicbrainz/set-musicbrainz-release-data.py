@@ -25,6 +25,9 @@ def get_tracks_from_release(session, release_id: str):
     tracks = []
 
     for media in release["media"]:
+        if media["format"] == "DVD":
+            continue
+
         for track in media["tracks"]:
             tracks.append({
                 "track_id": track["id"],
@@ -48,7 +51,7 @@ def list_files(directory):
     return sorted(files)
 
 def get_kid3_command(tag, value, path):
-    kid3_cli_set_tag = "kid3-cli -c \"set '{tag}' '{value}' 2\" '{path}'"
+    kid3_cli_set_tag = "kid3-cli -c \"set '{tag}' '{value}' 2\" \"{path}\""
     return kid3_cli_set_tag.format(
         tag=tag,
         value=value,
@@ -57,6 +60,8 @@ def get_kid3_command(tag, value, path):
 
 def generate_kid3_commands(files, tracks):
     if len(tracks) != len(files):
+        print("Number of tracks from release: {}".format(len(tracks)))
+        print("Number of files: {}".format(len(files)))
         print("Mismatched number of files and tracks.")
         exit(1)
 
@@ -65,15 +70,19 @@ def generate_kid3_commands(files, tracks):
         file = files[index]
         track = tracks[index]
 
-        commands.append(get_kid3_command("title", track["title"], file))
-        commands.append(get_kid3_command("album", track["album"], file))
+        file_escaped = file.replace('"', r'\"')
+        title = track["title"].replace("'", r"\'")
+        album = track["album"].replace("'", r"\'")
 
-        commands.append(get_kid3_command("tracknumber", track["track_number"], file))
-        commands.append(get_kid3_command("discnumber", track["disk_number"], file))
+        commands.append(get_kid3_command("title", title, file_escaped))
+        commands.append(get_kid3_command("album", album, file_escaped))
 
-        commands.append(get_kid3_command("MUSICBRAINZ_RELEASETRACKID", track["track_id"], file))
-        commands.append(get_kid3_command("MUSICBRAINZ_TRACKID", track["recording_id"], file))
-        commands.append(get_kid3_command("MUSICBRAINZ_ALBUMID", track["album_id"], file))
+        commands.append(get_kid3_command("tracknumber", track["track_number"], file_escaped))
+        commands.append(get_kid3_command("discnumber", track["disk_number"], file_escaped))
+
+        commands.append(get_kid3_command("MUSICBRAINZ_RELEASETRACKID", track["track_id"], file_escaped))
+        commands.append(get_kid3_command("MUSICBRAINZ_TRACKID", track["recording_id"], file_escaped))
+        commands.append(get_kid3_command("MUSICBRAINZ_ALBUMID", track["album_id"], file_escaped))
     return commands
 
 def execute_commands(commands):
